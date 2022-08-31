@@ -1,0 +1,18 @@
+DATA:
+  shot: 1
+  train_ratio: 1.
+
+  data_path: "/raid/candi/yiwen/data/multiorgan_final"  # path to folder including institution.txt and data
+  fold: 1
+  resolution: [ 0.75, 0.75, 2.5 ]
+  size: [ 256, 256, 40 ]
+  novel_ins: 3
+
+MODEL:
+  align: True  # include spatial alignment mechanism
+  con: True  # include support mask conditioning module
+
+  model: "ours"
+  feature: 32
+  f_size: [128, 128, 40]
+  alpha: 0.125
