@@ -170,7 +170,6 @@ def val_worker(args):
     else:
         return ValueError(f"unrecognised model {args.model}")
     print(f"model includes {sum(p.numel() for p in model.parameters())} parameters")
-    exit()
     model = torch.nn.DataParallel(model.cuda())
     state_dict = torch.load(f"{save_dir}/best_ckpt.pth")["model"]
     model.load_state_dict(state_dict, strict=True)
