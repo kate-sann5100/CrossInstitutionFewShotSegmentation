@@ -120,8 +120,10 @@ def val_worker(args):
             state_dict[k] = model.state_dict()[k]
     model.load_state_dict(state_dict, strict=True)
 
-    vis = Visualisation(save_path=f"{save_dir}/vis")
-    # vis = None
+    if args.vis:
+        vis = Visualisation(save_path=f"{save_dir}/vis")
+    else:
+        vis = None
     dice_result_dict, hausdorff_result_dict = test(
         args, model, state_dict, test_loader, vis=vis)
 
