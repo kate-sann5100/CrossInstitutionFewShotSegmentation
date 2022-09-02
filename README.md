@@ -54,3 +54,26 @@ python finetune.py --config cofig/finetune.yaml \
     --ins ${novel institution}
     --test
 ```
+
+### Train
+To train the proposed method (`3d_con_align`), execute the following command:
+```
+python fewshot.py --config cofig/few_shot.yaml \
+    --fold ${novel organ fold}
+    --ins ${novel institution}
+```
+To train the 2d baseline (`2d`), download the resnet50 weight pretrained on 
+ImageNet from [here](https://drive.google.com/file/d/1CtNYaqFw13pn-6FoiF99tIGEBuVnH9Hz/view?usp=sharing) 
+and place under the `model` directory, execute the following 
+command:
+```
+python fewshot.py --config cofig/few_shot.yaml \
+    --fold ${novel organ fold}
+    --ins ${novel institution}
+```
+To train the finetune baseline (`3d_finetune`), execute the following command:
+```
+python finetune.py --config cofig/finetune.yaml \
+    --fold ${novel organ fold}
+    --ins ${novel institution}
+```

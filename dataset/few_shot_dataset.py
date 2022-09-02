@@ -111,52 +111,49 @@ class FewShotDataset(Dataset):
         return len(self.img_list) if self.mode == "train" else len(self.fixed_pair)
 
     def __getitem__(self, idx):
-        try:
-            if self.mode == "train":
-                query = idx
-                support = sample_pair(idx, len(self.img_list))
-                query, support = self.img_list[query], self.img_list[support]
-                cls = self.query_cls[np.random.randint(len(self.query_cls))]
-            else:
-                if self.args.model == "baseline_2d":
-                    query, support, cls, start_depth = self.fixed_pair[idx]
-                else:
-                    query, support, cls = self.fixed_pair[idx]
-
-            query = get_img(query, self.transform, self.image_path, self.seg_path)
-            query = mask_trim(query, cls, self.novel_cls, self.args.size)
-
-            if self.shot == 1:
-                support = get_img(support, self.transform, self.image_path, self.seg_path)
-                support = mask_trim(support, cls, self.novel_cls, self.args.size)
-            else:
-                support_list = support
-                support_list = [
-                    get_img(support, self.transform, self.image_path, self.seg_path)
-                    for support in support_list
-                ]
-                support_list = [
-                    mask_trim(support, cls, self.novel_cls, self.args.size)
-                    for support in support_list
-                ]
-                support = {
-                    "t2w": torch.stack([s["t2w"] for s in support_list]),  # (S, 1, W, H, D)
-                    "mask": torch.stack([s["mask"] for s in support_list]),  # (S, 1, W, H, D)
-                    "seg": torch.stack([s["seg"] for s in support_list]),  # (S, 1, W, H, D)
-                    "name": [s["name"] for s in support_list],
-                    "ins": support_list[0]["ins"]
-                }
-
+        if self.mode == "train":
+            query = idx
+            support = sample_pair(idx, len(self.img_list))
+            query, support = self.img_list[query], self.img_list[support]
+            cls = self.query_cls[np.random.randint(len(self.query_cls))]
+        else:
             if self.args.model == "baseline_2d":
-                if self.mode == "train":
-                    query = self.random_crop(query)
-                    support = self.random_crop(support)
-                else:
-                    query = self.depth_crop(query, start_depth)
-                    support = self.depth_crop(support, start_depth)
-            return query, support, cls
-        except:
-            return self.__getitem__(self, idx)
+                query, support, cls, start_depth = self.fixed_pair[idx]
+            else:
+                query, support, cls = self.fixed_pair[idx]
+
+        query = get_img(query, self.transform, self.image_path, self.seg_path)
+        query = mask_trim(query, cls, self.novel_cls, self.args.size)
+
+        if self.shot == 1:
+            support = get_img(support, self.transform, self.image_path, self.seg_path)
+            support = mask_trim(support, cls, self.novel_cls, self.args.size)
+        else:
+            support_list = support
+            support_list = [
+                get_img(support, self.transform, self.image_path, self.seg_path)
+                for support in support_list
+            ]
+            support_list = [
+                mask_trim(support, cls, self.novel_cls, self.args.size)
+                for support in support_list
+            ]
+            support = {
+                "t2w": torch.stack([s["t2w"] for s in support_list]),  # (S, 1, W, H, D)
+                "mask": torch.stack([s["mask"] for s in support_list]),  # (S, 1, W, H, D)
+                "seg": torch.stack([s["seg"] for s in support_list]),  # (S, 1, W, H, D)
+                "name": [s["name"] for s in support_list],
+                "ins": support_list[0]["ins"]
+            }
+
+        if self.args.model == "baseline_2d":
+            if self.mode == "train":
+                query = self.random_crop(query)
+                support = self.random_crop(support)
+            else:
+                query = self.depth_crop(query, start_depth)
+                support = self.depth_crop(support, start_depth)
+        return query, support, cls
 
     def depth_crop(self, input, start_depth):
         """
