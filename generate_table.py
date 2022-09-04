@@ -5,8 +5,10 @@ import numpy as np
 from pylatex import Tabular, MultiColumn, MultiRow
 from pylatex.base_classes import Container
 from pylatex.utils import bold, NoEscape
+from scipy import stats
 
-from analyse_result import summarise_result
+from analyse_result import summarise_result, load_result_dict
+from statstics import compute_cross_ins_p_value
 from utils.train_eval_utils import get_parser
 
 
@@ -188,20 +190,29 @@ def add_exp(args, table, exp_name, metric, by="fold", supervised=False):
 
 
 def get_ins_correlation(model):
+    """
+    p-value refers to p-value from two tailed t-test performed per
+    query institution between the Dice scores where support institution
+    equals query institution and the max Dice scores achieved among
+    all support institutions.
+    :param model:
+    :return:
+    """
     args = get_parser()
     args.novel_ins = 3
     args.model = model
     args.con, args.align = True, True
 
-    table = Tabular('|cc|ccccccc|cc|')
+    table = Tabular('|cc|ccccccc|ccc|')
     table.add_hline()
     table.add_row((
-        "", "", MultiColumn(7, align='c|', data='s_ins'), "std", "mean"
+        "", "", MultiColumn(7, align='c|', data='s_ins'), "std", "mean", "p-value"
     ))
     table.add_row((
-        "", "", "ins1", "ins2", "ins3", "ins4", "ins5", "ins6", "ins7", "", ""
+        "", "", "ins1", "ins2", "ins3", "ins4", "ins5", "ins6", "ins7", "", "", ""
     ))
     table.add_hline()
+    p_value_list = compute_cross_ins_p_value(model)
 
     for query_ins in range(1, 8):
         args.query_ins = query_ins
@@ -211,8 +222,11 @@ def get_ins_correlation(model):
         # add std
         row = [*row, np.std(np.array(row)), np.mean(np.array(row))]
         # bold row maximum
+        print(row)
         max = np.max(np.array(row))
         row = ["{:.2f}".format(i) if i != max else bold("{:.2f}".format(i)) for i in row]
+        p_value = p_value_list[query_ins - 1]
+        row.append("{: .2e}".format(p_value) if p_value < 0.01 else "{: .2f}".format(p_value))
         if query_ins == 1:
             table.add_row((
                 MultiRow(7, data='q_ins'),
@@ -225,7 +239,139 @@ def get_ins_correlation(model):
     table.add_hline()
 
     doc = Table(data=table)
-    doc.generate_tex(f"./table/{model}_cross_ins_{metric}")
+    doc.generate_tex(f"./table/{model}_cross_ins_dice")
+
+
+def get_cross_ins_p_value(model):
+    """
+    p-value from two tailed t-test performed per query institution
+    between the Dice scores where support institution equals query
+    institution and the Dice scores achieved per support
+    institution.
+    :param model:
+    :return:
+    """
+    args = get_parser()
+    args.novel_ins = 3
+    args.model = model
+    args.con, args.align = True, True
+
+    table = Tabular('|cc|ccccccc|')
+    table.add_hline()
+    table.add_row((
+        "", "", MultiColumn(7, align='c|', data='s_ins')
+    ))
+    table.add_row((
+        "", "", "ins1", "ins2", "ins3", "ins4", "ins5", "ins6", "ins7"
+    ))
+    table.add_hline()
+
+    for query_ins in range(1, 8):
+        args.query_ins = query_ins
+        result_dict = {}
+        for fold in range(1, 5):
+            args.fold = fold
+            result_dict.update(
+                load_result_dict(args, "dice")
+            )
+
+        # {class: {name: {ins: v}}}
+        same_ins_list = [
+            ins_dict[query_ins]
+            for _, name_dict in result_dict.items()
+            for _, ins_dict in name_dict.items()
+        ]
+        row = []
+        for ins in range(1, 8):
+            if ins == query_ins:
+                p_value_string = "N/A"
+            else:
+                ins_list = [
+                    ins_dict[ins]
+                    for _, name_dict in result_dict.items()
+                    for _, ins_dict in name_dict.items()
+                ]
+                p_value = stats.ttest_rel(ins_list, same_ins_list)[1]
+                p_value_string = "{: .2e}".format(p_value) if p_value < 0.01 else "{: .2f}".format(p_value)
+                if p_value > 0.05:
+                    p_value_string = bold(p_value_string)
+            row.append(p_value_string)
+        if query_ins == 1:
+            table.add_row((
+                MultiRow(7, data='q_ins'),
+                f"ins{query_ins}",
+                *row
+            ))
+        else:
+            table.add_row(("", f"ins{query_ins}", *row))
+
+    table.add_hline()
+
+    doc = Table(data=table)
+    doc.generate_tex(f"./table/{model}_pvalue")
+
+
+def get_p_value():
+    """
+    p-value from two tailed t-test performed per query institution
+    except 5,6,7 between the Dice scores where support institution
+    equals query institution and the max Dice scores achieved among
+    all support institutions except 5,6,7 .
+    :return:
+    """
+    args = get_parser()
+    args.novel_ins = 3
+    args.con, args.align = True, True
+
+    table = Tabular('|c|cccc|')
+    table.add_hline()
+    table.add_row((
+        MultiRow(2, data="model"), MultiColumn(4, align='c|', data='q_ins')
+    ))
+    table.add_row((
+        "", "ins1", "ins2", "ins3", "ins4"
+    ))
+    table.add_hline()
+
+    for model in ["ours", "baseline_2d"]:
+        args.model = model
+        row = []
+        for query_ins in range(1, 5):
+            args.query_ins = query_ins
+            result_dict = {}
+            for fold in range(1, 5):
+                args.fold = fold
+                result_dict.update(
+                    load_result_dict(args, "dice")
+                )
+
+            # {class: {name: {ins: v}}}
+            same_ins_list = [
+                ins_dict[query_ins]
+                for _, name_dict in result_dict.items()
+                for _, ins_dict in name_dict.items()
+            ]
+            diff_ins_list = [
+                max(np.array([ins_dict[ins] for ins in range(1, 5) if ins != query_ins]))
+                for _, name_dict in result_dict.items()
+                for _, ins_dict in name_dict.items()
+            ]
+
+            print(len(same_ins_list), len(diff_ins_list))
+            print(np.array(same_ins_list) - np.array(diff_ins_list))
+            p_value = stats.ttest_rel(same_ins_list, diff_ins_list)[1]
+            print(p_value)
+            p_value_string = "{: .2e}".format(p_value) if p_value < 0.01 else "{: .2f}".format(p_value)
+            if p_value > 0.05:
+                p_value_string = bold(p_value_string)
+            row.append(p_value_string)
+
+        table.add_row((model, *row))
+
+    table.add_hline()
+
+    doc = Table(data=table)
+    doc.generate_tex(f"./table/pvalue")
 
 
 class Table(Container):
@@ -241,10 +387,12 @@ if __name__ == '__main__':
 
     by = "fold"
     # by = "class"
-    for metric in [["dice", "hausdorff"], ["dice"]]:
-        get_result_table(ins=3, metric=metric, by=by)
-        get_result_table(ins=4, metric=metric, by=by)
-        get_training_size_ablation_table(metric=metric, by=by)
-        get_k_shot_ablation_table(metric=metric, by=by)
+    # for metric in [["dice", "hausdorff"], ["dice"]]:
+    #     get_result_table(ins=3, metric=metric, by=by)
+    #     get_result_table(ins=4, metric=metric, by=by)
+    #     get_training_size_ablation_table(metric=metric, by=by)
+    #     get_k_shot_ablation_table(metric=metric, by=by)
     for model in ["ours", "baseline_2d"]:
-        get_ins_correlation(model)
+        # get_ins_correlation(model)
+        # get_cross_ins_p_value(model)
+        get_p_value()
