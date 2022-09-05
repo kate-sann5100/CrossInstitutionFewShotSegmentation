@@ -1,9 +1,8 @@
-import itertools
 import numpy as np
 
 from scipy.stats import stats
 
-from analyse_result import load_result_dict
+from analyse_result import load_result_dict, summarise_result
 from utils.train_eval_utils import get_parser
 
 
@@ -69,7 +68,25 @@ def compute_novel_base_p_value():
     print(p_value)
 
 
+def calculate_improvement(ins):
+    args = get_parser()
+    args.seg, args.prior, args.align = True, True, True
+    args.model = "baseline_2d"
+    args.novel_ins = ins
+    args.query_ins = ins
+    result = summarise_result(args, "dice", supervised=False)
+    baseline_base, baseline_novel, baseline_all = result["mean"]["base"], result["mean"]["novel"], result["mean"]["all"]
+    args.model = "ours"
+    result = summarise_result(args, "dice", supervised=False)
+    ours_base, ours_novel, ours_all = result["mean"]["base"], result["mean"]["novel"], result["mean"]["all"]
+    print(f"ins{ins} all improvement: {ours_all - baseline_all}")
+    print(f"ins{ins} base improvement: {ours_base - baseline_base}")
+    print(f"ins{ins} novel improvement: {ours_novel - baseline_novel}")
+
+
 if __name__ == '__main__':
-    compute_cross_ins_p_value("baseline_2d")
-    compute_cross_ins_p_value("ours")
+    # compute_cross_ins_p_value("baseline_2d")
+    # compute_cross_ins_p_value("ours")
     # compute_novel_base_p_value()
+    calculate_improvement(ins=3)
+    calculate_improvement(ins=4)

@@ -172,7 +172,6 @@ def mask_trim(x, cls, novel_cls, size):
     # trim
     target_slice = torch.sum(x["mask"], dim=(0, 1, 2)) != 0
     for k in ["t2w", "mask", "seg"]:
-
         x[k] = x[k][..., target_slice]
         x[k] = F.interpolate(
             x[k].unsqueeze(0).to(torch.float),

@@ -304,9 +304,10 @@ class LSNet(nn.Module):
             if self.seg:
                 binary["q_seg"] = q_pred  # (B, 9, W, H, D)
                 binary["s_seg"] = s_pred  # (B, 9, W, H, D)
-                binary["aligned_s_seg_gt"] = Warp(mode="nearest")(support["seg"].to(ddf), ddf)  # (B, 1, W, H, D)
-                binary["aligned_s_mask"] = s_mask
-                binary["aligned_s_t2w"] = Warp()(support["t2w"].to(ddf), ddf)  # (B, 1, W, H, D)
+                if self.align_head is not None:
+                    binary["aligned_s_seg_gt"] = Warp(mode="nearest")(support["seg"].to(ddf), ddf)  # (B, 1, W, H, D)
+                    binary["aligned_s_mask"] = s_mask
+                    binary["aligned_s_t2w"] = Warp()(support["t2w"].to(ddf), ddf)  # (B, 1, W, H, D)
             return binary
 
     def get_loss(self, pred, y, mask=None):

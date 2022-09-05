@@ -38,7 +38,7 @@ python fewshot.py --config cofig/few_shot.yaml \
     --test
 ```
 To evaluate the 2d baseline (`2d`), download the resnet50 weight pretrained on 
-ImageNet from [here](https://drive.google.com/file/d/1CtNYaqFw13pn-6FoiF99tIGEBuVnH9Hz/view?usp=sharing) 
+ImageNet from [here](https://drive.google.com/file/d/1tvbnA7wCpZtZfGe1HPIkaPo-ig1Wy0g2/view?usp=sharing) 
 and place under the `model` directory, execute the following 
 command:
 ```
@@ -63,7 +63,7 @@ python fewshot.py --config cofig/few_shot.yaml \
     --ins ${novel institution}
 ```
 To train the 2d baseline (`2d`), download the resnet50 weight pretrained on 
-ImageNet from [here](https://drive.google.com/file/d/1CtNYaqFw13pn-6FoiF99tIGEBuVnH9Hz/view?usp=sharing) 
+ImageNet from [here](https://drive.google.com/file/d/1tvbnA7wCpZtZfGe1HPIkaPo-ig1Wy0g2/view?usp=sharing) 
 and place under the `model` directory, execute the following 
 command:
 ```
