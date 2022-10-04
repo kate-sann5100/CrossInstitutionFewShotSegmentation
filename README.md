@@ -1,6 +1,6 @@
 # Cross Institution Few Shot Segmentation
-This repository includes implementation of methods proposed in
-the Medical Image Analysis submission:
+This repository includes implementation of methods proposed in the paper
+[Prototypical few-shot segmentation for cross-institution male pelvic structures with spatial registration](https://arxiv.org/pdf/2209.05160)
 
 ### Install dependencies
 To install dependencies, run `pip install -r requirements.txt`
