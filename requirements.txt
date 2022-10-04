@@ -6,3 +6,4 @@ pylatex==1.4.1
 torch==1.8.1
 tqdm==4.60.0
 tensorboard==2.5.0
+pyyaml
