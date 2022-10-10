@@ -3,10 +3,10 @@ This repository includes implementation of methods proposed in the paper
 [Prototypical few-shot segmentation for cross-institution male pelvic structures with spatial registration](https://arxiv.org/pdf/2209.05160)
 
 ### Install dependencies
-To install dependencies, run `pip install -r requirements.txt`
+To install dependencies, run `pip install -r requirements.txt` (python version 3.8 is recommended).
 
 ### Data preparation
-Data could be downloaded [here]().
+Data could be downloaded [here](https://zenodo.org/record/7013610).
 
 Put the downloaded data under `data_folder` as the following structure
 ```
@@ -17,11 +17,12 @@ data_folder
     ├──001000_mask.nii
     ├──...
 ```
+Update the path to `data_folder` in config files.
 
 ### Evaluate trained model
 All trained model could be downloaded [here](https://drive.google.com/file/d/1CtNYaqFw13pn-6FoiF99tIGEBuVnH9Hz/view?usp=sharing)
 
-Put the `ckpt` folder under the root directory:
+Rename the `upload_ckpt` folder as `ckpt` and put it under the root directory such that:
 ```
 CrossInstitutionFewShotSegmentation
 ├── ckpt
@@ -42,14 +43,14 @@ ImageNet from [here](https://drive.google.com/file/d/1tvbnA7wCpZtZfGe1HPIkaPo-ig
 and place under the `model` directory, execute the following 
 command:
 ```
-python fewshot.py --config cofig/few_shot.yaml \
+python fewshot.py --config config/few_shot.yaml \
     --fold ${novel organ fold}
     --ins ${novel institution}
     --test
 ```
 To evaluate the finetune baseline (`3d_finetune`), execute the following command:
 ```
-python finetune.py --config cofig/finetune.yaml \
+python finetune.py --config config/finetune.yaml \
     --fold ${novel organ fold}
     --ins ${novel institution}
     --test
@@ -58,7 +59,7 @@ python finetune.py --config cofig/finetune.yaml \
 ### Train
 To train the proposed method (`3d_con_align`), execute the following command:
 ```
-python fewshot.py --config cofig/few_shot.yaml \
+python fewshot.py --config config/few_shot.yaml \
     --fold ${novel organ fold}
     --ins ${novel institution}
 ```
@@ -67,13 +68,13 @@ ImageNet from [here](https://drive.google.com/file/d/1tvbnA7wCpZtZfGe1HPIkaPo-ig
 and place under the `model` directory, execute the following 
 command:
 ```
-python fewshot.py --config cofig/few_shot.yaml \
+python fewshot.py --config config/few_shot.yaml \
     --fold ${novel organ fold}
     --ins ${novel institution}
 ```
 To train the finetune baseline (`3d_finetune`), execute the following command:
 ```
-python finetune.py --config cofig/finetune.yaml \
+python finetune.py --config config/finetune.yaml \
     --fold ${novel organ fold}
     --ins ${novel institution}
 ```
