@@ -43,7 +43,7 @@ ImageNet from [here](https://drive.google.com/file/d/1tvbnA7wCpZtZfGe1HPIkaPo-ig
 and place under the `model` directory, execute the following 
 command:
 ```
-python fewshot.py --config config/few_shot.yaml \
+python fewshot.py --config config/baseline_2d.yaml \
     --fold ${novel organ fold}
     --ins ${novel institution}
     --test
