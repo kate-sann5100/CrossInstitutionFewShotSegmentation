@@ -130,6 +130,31 @@ def val_worker(args):
     save_result_dicts(args, save_dir, dice_result_dict, hausdorff_result_dict)
 
 
+def val_base_worker(args):
+    set_seed(args.manual_seed)
+    save_dir = f"./ckpt/finetune/fold{args.fold}_ins{args.novel_ins}"
+    print(save_dir)
+    model = FineTune(args)
+    model = torch.nn.DataParallel(model.cuda())
+    state_dict = torch.load(f"{save_dir}/best_ckpt.pth")["model"]
+    for k, v in state_dict.items():
+        if "seg" in k:
+            state_dict[k] = model.state_dict()[k]
+    model.load_state_dict(state_dict, strict=True)
+
+    for query_ins in range(1, 8):
+        if query_ins == args.novel_ins:
+            continue
+        args.query_ins = query_ins
+        test_dataset = FewShotDataset(args=args, mode="test")
+        test_loader = DataLoader(test_dataset, batch_size=1)
+
+        dice_result_dict, hausdorff_result_dict = test(
+            args, model, state_dict, test_loader, vis=None)
+
+        save_result_dicts(args, save_dir, dice_result_dict, hausdorff_result_dict)
+
+
 def test(args, model, pretrained_state_dict, test_loader, vis=None):
     dice_meter = DiceMeter(writer=None, few_shot=True, test=True)
     hausdorff_meter = HausdorffMeter(writer=None, few_shot=True, test=test)

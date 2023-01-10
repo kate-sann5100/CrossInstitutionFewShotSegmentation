@@ -232,7 +232,7 @@ def validation(args, model, loader, writer=None, step=None, vis=None, test=False
             cuda_batch(query)
             cuda_batch(support)
             binary = model(query, support)  # (1, 1, ...)
-            print(query["name"][0], support["ins"][0], cls[0])
+            # print(query["name"][0], support["ins"][0], cls[0])
             if not test:
                 dice_meter.update(
                     binary["mask"], query["mask"], cls,

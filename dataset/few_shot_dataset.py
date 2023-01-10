@@ -88,12 +88,12 @@ class FewShotDataset(Dataset):
                                 )
 
         # exclude query-support pairs not specified in "vis_list.pth"
-        # vis_list = torch.load("vis_list.pth")
-        # self.fixed_pair = [
-        #     [(query, args.novel_ins), (support, ins), cls]
-        #     for (query, args.novel_ins), (support, ins), cls in self.fixed_pair
-        #     if (query, ins, cls) in vis_list
-        # ]
+        vis_list = torch.load("vis_list.pth")
+        self.fixed_pair = [
+            [(query, args.novel_ins), (support, ins), cls]
+            for (query, args.novel_ins), (support, ins), cls in self.fixed_pair
+            if (query, ins, cls) in vis_list
+        ]
 
         self.transform = get_transform(
             augmentation=self.mode == "train",

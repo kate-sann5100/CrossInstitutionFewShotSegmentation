@@ -7,7 +7,7 @@ from pylatex.base_classes import Container
 from pylatex.utils import bold, NoEscape
 from scipy import stats
 
-from analyse_result import summarise_result, load_result_dict
+from analyse_result import summarise_result, load_result_dict, summarise_base_ins_result
 from statstics import compute_cross_ins_p_value
 from utils.train_eval_utils import get_parser
 
@@ -35,6 +35,81 @@ def get_result_table(ins, metric, by):
     add_exp(args, table, exp_name="3d_supervised", metric=metric, by=by, supervised=True)
     doc = Table(data=table)
     doc.generate_tex(f"./table/ins{args.novel_ins}_{metric}")
+
+
+def get_base_ins_result_table(ins, metric, by, base_only=True):
+    args = get_parser()
+    args.novel_ins = ins
+    args.query_ins = args.novel_ins
+
+    table = start_table(header=["model"], metric=metric, by=by, base_only=base_only)
+    # args.model = "finetune"
+    # add_exp(args, table, exp_name="3d_finetune", metric=metric, by=by)
+    args.model = "baseline_2d"
+    add_base_ins_exp(args, table, exp_name="2d", metric=metric, by=by, base_only=base_only)
+    args.model = "ours"
+    args.con, args.align = True, True
+    add_base_ins_exp(args, table, exp_name="3d_con_align", metric=metric, by=by, base_only=base_only)
+    # add_exp(args, table, exp_name="3d_supervised", metric=metric, by=by, supervised=True)
+    doc = Table(data=table)
+    doc.generate_tex(f"./table/base_ins_ins{args.novel_ins}_{metric}")
+
+
+def add_base_ins_exp(args, table, exp_name, metric, by="fold", supervised=False, base_only=False):
+    cat_list = ["base"] if base_only else ["all", "base", "novel"]
+    metric_dict = {}
+    for m in metric:
+        result = summarise_base_ins_result(args, m, supervised=supervised)
+        print("summarised")
+        row_dict = {}
+        for cat in cat_list:
+            if by == "fold":
+                row = np.array([
+                    *[result[f"fold{fold}"][cat] for fold in range(1, 5)], result["mean"][cat]
+                ])
+            elif by == "class":
+                row = np.array([
+                    *[result[cls][cat] for cls in [1, 5, 2, 6, 3, 7, 4, 8]], result["mean"][cat]
+                ])
+            else:
+                raise ValueError(f"unrecognised by: {by}")
+
+            # convert dice to % value
+            if m == "dice":
+                row = row * 100
+            row_dict[cat] = row
+
+        if not base_only:
+            row_dict[NoEscape('$\Delta$')] = (row_dict["novel"] - row_dict["base"]) / row_dict["novel"] * 100
+
+        metric_dict[m] = row_dict
+
+    column_list = cat_list if base_only else cat_list + [NoEscape('$\Delta$')]
+    for i, cat in enumerate(column_list):
+        row = list(
+            itertools.chain.from_iterable(
+                [metric_dict[m][cat] for m in metric]
+            )
+        )
+        row = ["{:.2f}".format(i) for i in row]
+        if cat == NoEscape('$\Delta$'):
+            row = [f"{v}%" for v in row]
+        if i == 0:
+            if base_only:
+                table.add_row(
+                    (MultiRow(1, data=exp_name), *row)
+                )
+            else:
+                table.add_row(
+                    (MultiRow(1 if supervised else 4, data=exp_name), cat, *row)
+                )
+        else:
+            if base_only:
+                table.add_row(("", *row))
+            else:
+                table.add_row(("", cat, *row))
+
+    table.add_hline()
 
 
 def get_k_shot_ablation_table(metric, by):
@@ -72,7 +147,7 @@ def get_training_size_ablation_table(metric, by):
     doc.generate_tex(f"./table/training_size_ablation_{metric}")
 
 
-def start_table(header, metric, by="fold"):
+def start_table(header, metric, by="fold", base_only=False):
     """
     Generate table head
     :param header:
@@ -85,58 +160,75 @@ def start_table(header, metric, by="fold"):
         "surface_distance": "Average Surface Distance (mm)"
     }
     if by == "fold":
-        table = Tabular('|c|c|' + 'ccccc|' * len(metric))
-        table.add_hline()
-        # table.add_row((
-        #     MultiRow(2, data=header), MultiRow(2, data="s_ins"),
-        #     *[MultiColumn(5, align='c|', data=metric_name_dict[m]) for m in metric]
-        # ))
-        # row = [
-        #     "", "",
-        #     *([*[f"fold{fold}" for fold in range(1, 5)], "mean"] * len(metric)),
-        # ]
-        table.add_row((
-            MultiRow(2, data=header[0]) if len(header) == 1 else header[0], MultiRow(2, data="s_ins"),
-            *[MultiColumn(5, align='c|', data=metric_name_dict[m]) for m in metric]
-        ))
-        row = [
-            "" if len(header) == 1 else header[1], "",
-            *([*[f"fold{fold}" for fold in range(1, 5)], "mean"] * len(metric)),
-        ]
+        if base_only:
+            table = Tabular('|c|' + 'ccccc|' * len(metric))
+            table.add_hline()
+            table.add_row((
+                MultiRow(2, data=header[0]) if len(header) == 1 else header[0],
+                *[MultiColumn(5, align='c|', data=metric_name_dict[m]) for m in metric]
+            ))
+            row = [
+                "" if len(header) == 1 else header[1],
+                *([*[f"fold{fold}" for fold in range(1, 5)], "mean"] * len(metric)),
+            ]
+        else:
+            table = Tabular('|c|c|' + 'ccccc|' * len(metric))
+            table.add_hline()
+            table.add_row((
+                MultiRow(2, data=header[0]) if len(header) == 1 else header[0], MultiRow(2, data="s_ins"),
+                *[MultiColumn(5, align='c|', data=metric_name_dict[m]) for m in metric]
+            ))
+            row = [
+                "" if len(header) == 1 else header[1], "",
+                *([*[f"fold{fold}" for fold in range(1, 5)], "mean"] * len(metric)),
+            ]
         table.add_row(row)
         table.add_hline()
         return table
     elif by == "class":
-        table = Tabular('|c|c|' + 'cc|cc|cc|cc|c|' * len(metric))
-        table.add_hline()
-        # table.add_row((
-        #     MultiRow(3, data=header), MultiRow(3, data="s_ins"),
-        #     *[MultiColumn(9, align='c|', data=metric_name_dict[m]) for m in metric]
-        # ))
-        # table.add_hline(start=3)
-        # row = [
-        #     "", "",
-        #     *([*[MultiColumn(2, align='c|', data=f"fold{fold}") for fold in range(1, 5)], "mean"] * len(metric))
-        # ]
-        table.add_row((
-            MultiRow(len(header), data=header[0]), MultiRow(4, data="s_ins"),
-            *[MultiColumn(9, align='c|', data=metric_name_dict[m]) for m in metric]
-        ))
-        table.add_hline(start=3)
-        row = [
-            "", "",
-            *([*[MultiColumn(2, align='c|', data=f"fold{fold}") for fold in range(1, 5)], "mean"] * len(metric))
-        ]
-        table.add_row(row)
+        if base_only:
+            table = Tabular('|c|' + 'cc|cc|cc|cc|c|' * len(metric))
+            table.add_hline()
+            table.add_row((
+                MultiRow(len(header), data=header[0]),
+                *[MultiColumn(9, align='c|', data=metric_name_dict[m]) for m in metric]
+            ))
+            table.add_hline(start=3)
+            row = [
+                "",
+                *([*[MultiColumn(2, align='c|', data=f"fold{fold}") for fold in range(1, 5)], "mean"] * len(metric))
+            ]
+            table.add_row(row)
+        else:
+            table = Tabular('|c|c|' + 'cc|cc|cc|cc|c|' * len(metric))
+            table.add_hline()
+            table.add_row((
+                MultiRow(len(header), data=header[0]), MultiRow(4, data="s_ins"),
+                *[MultiColumn(9, align='c|', data=metric_name_dict[m]) for m in metric]
+            ))
+            table.add_hline(start=3)
+            row = [
+                "", "",
+                *([*[MultiColumn(2, align='c|', data=f"fold{fold}") for fold in range(1, 5)], "mean"] * len(metric))
+            ]
+            table.add_row(row)
         organ_list = [("bladder", ""), ("bone", ""), ("obturator", "internus"), ("transition", "zone"),
                       ("central", "gland"), ("rectum", ""), ("seminal", "vesicle"), ("neurovascular", "bundle")]
         for i in range(2):
-            row = [
-                MultiRow(2, data=header[1]) if i == 0 and len(header) == 2 else "", "",
-                *([
-                    *[organ_list[c][i] for c in [0, 4, 1, 5, 2, 6, 3, 7]], ""
-                ] * len(metric))
-            ]
+            if base_only:
+                row = [
+                    MultiRow(2, data=header[1]) if i == 0 and len(header) == 2 else "",
+                    *([
+                          *[organ_list[c][i] for c in [0, 4, 1, 5, 2, 6, 3, 7]], ""
+                      ] * len(metric))
+                ]
+            else:
+                row = [
+                    MultiRow(2, data=header[1]) if i == 0 and len(header) == 2 else "", "",
+                    *([
+                        *[organ_list[c][i] for c in [0, 4, 1, 5, 2, 6, 3, 7]], ""
+                    ] * len(metric))
+                ]
             table.add_row(row)
         table.add_hline()
         return table
@@ -386,13 +478,15 @@ if __name__ == '__main__':
         os.mkdir("table")
 
     by = "fold"
+    for metric in [["dice", "hausdorff"], ["dice"]]:
+        get_base_ins_result_table(ins=3, metric=metric, by=by)
     # by = "class"
     # for metric in [["dice", "hausdorff"], ["dice"]]:
     #     get_result_table(ins=3, metric=metric, by=by)
     #     get_result_table(ins=4, metric=metric, by=by)
     #     get_training_size_ablation_table(metric=metric, by=by)
     #     get_k_shot_ablation_table(metric=metric, by=by)
-    for model in ["ours", "baseline_2d"]:
+    # for model in ["ours", "baseline_2d"]:
         # get_ins_correlation(model)
         # get_cross_ins_p_value(model)
-        get_p_value()
+        # get_p_value()

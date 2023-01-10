@@ -4,8 +4,65 @@ import itertools
 from utils.train_eval_utils import get_parser, set_seed, get_save_dir
 
 
-def summarise_result(args, metric="dice", supervised=False):
+def summarise_base_ins_result(args, metric="dice", supervised=False):
+    if supervised:
+        raise NotImplementedError
+    else:
+        raw_result = {}  # {q_ins: {cls: name: {s_ins: v}}}
+        for q_ins in range(1, 8):
+            if q_ins == args.novel_ins:
+                continue
+            args.query_ins = q_ins
+            raw_result[q_ins] = {}
+            for fold in range(1, 5):
+                args.fold = fold
+                for cls in [fold, fold + 4]:
+                    raw_result[q_ins][cls] = load_result_dict(args, metric)[cls]  # {cls: name: {s_ins: v}}
 
+        raw_result_by_cls = {}  # {cls: name: {s_ins: v}}}
+        for cls in range(1, 9):
+            raw_result_by_cls[cls] = {}
+            for q_ins, q_ins_dict in raw_result.items():
+                raw_result_by_cls[cls].update(q_ins_dict[cls])
+        result = {}
+        for fold in range(1, 5):
+            args.fold = fold
+            result.update(get_result(args, raw_result_by_cls, metric, supervised))
+
+    cat_list = ["N/A"] if supervised else ["all", "base", "novel"]
+    # average overall
+    result["mean"] = {
+        ins_cat: np.mean(np.array([result[cls][ins_cat] for cls in range(1, 9)]))
+        for ins_cat in cat_list
+    }
+
+    if not supervised:
+        result["mean"].update({
+            ins: np.mean(np.array([result[cls][ins] for cls in range(1, 9)]))
+            for ins in range(1, 8)
+        })
+
+    # average by fold
+    for fold in range(1, 5):
+        result[f"fold{fold}"] = {
+            ins_cat: np.mean(
+                np.array(
+                    [result[cls][ins_cat]
+                     for cls in [fold, fold + 4]]
+                )
+            )
+            for ins_cat in cat_list
+        }
+
+    # print mean
+    print(f"----------mean----------")
+    for cat in cat_list:
+        mean = result["mean"][cat]
+        print(f"{cat}: {mean}")
+    return result
+
+
+def summarise_result(args, metric="dice", supervised=False):
     if supervised:
         with open(f"ckpt/supervised/ins{args.novel_ins}/ins{args.novel_ins}_1shot_{metric}_result_dict.pkl", "rb") as fh:
             from pickle5 import pickle
@@ -59,6 +116,7 @@ def summarise_result(args, metric="dice", supervised=False):
 def load_result_dict(args, metric):
     save_dir = get_save_dir(args)
     dict_name = f"ins{args.query_ins}_{args.shot}shot_{metric}_result_dict.pkl"
+    print(dict_name)
     with open(f"{save_dir}/{dict_name}", "rb") as fh:
         from pickle5 import pickle
         result_dict = pickle.load(fh)
@@ -68,7 +126,7 @@ def load_result_dict(args, metric):
 def get_result(args, result_dict, metric=None, supervised=False):
     """
     :param args:
-    :param result_dict: {class: {name: {ins: v}}}
+    :param result_dict: {class: {name: {s_ins: v}}}
     :param metric: str
     :return: {cls: {ins_cat: v}}
     """
